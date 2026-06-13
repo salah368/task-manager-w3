@@ -6,5 +6,9 @@
   {
     "id": 2,
     "title": "Learn Git"
+  },
+  {
+    "id": 3,
+    "title": "Finish the Dockerfile"
   }
 ]
