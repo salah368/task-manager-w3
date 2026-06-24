@@ -1,78 +1,104 @@
 import { useState, useEffect } from 'react'
+import Login from './Login'
 
 function App() {
-  const [tasks, setTasks] = useState([])   // stores the list of tasks
-  const [text, setText] = useState('')      // stores what user types
+  const [token, setToken] = useState(localStorage.getItem('token') || null)
+  const [tasks, setTasks] = useState([])
+  const [text, setText] = useState('')
 
-  // runs once when the page loads — fetches all tasks from your API
   useEffect(() => {
-    fetch('http://localhost:3000/tasks')
+    if (!token) return
+    fetch('http://localhost:3000/tasks', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => setTasks(data))
-  }, [])
+  }, [token])
 
-  // sends a POST request to create a new task
+  function handleLogin(newToken) {
+    localStorage.setItem('token', newToken)
+    setToken(newToken)
+  }
+
+  function logout() {
+    localStorage.removeItem('token')
+    setToken(null)
+    setTasks([])
+  }
+
   function addTask() {
     if (!text) return
     fetch('http://localhost:3000/tasks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({ text })
     })
       .then(res => res.json())
       .then(newTask => {
-        setTasks([...tasks, newTask])  // add new task to the list
-        setText('')                     // clear the input
+        setTasks([...tasks, newTask])
+        setText('')
       })
   }
 
-  // sends a PATCH request to mark a task done
   function markDone(id) {
-    fetch(`http://localhost:3000/tasks/${id}`, { method: 'PATCH' })
+    fetch(`http://localhost:3000/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(updated => {
         setTasks(tasks.map(t => t.id === updated.id ? updated : t))
       })
   }
 
-  // sends a DELETE request to remove a task
   function deleteTask(id) {
-    fetch(`http://localhost:3000/tasks/${id}`, { method: 'DELETE' })
+    fetch(`http://localhost:3000/tasks/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then(() => {
         setTasks(tasks.filter(t => t.id !== id))
       })
   }
 
+  if (!token) {
+    return <Login onLogin={handleLogin} />
+  }
+
   return (
     <div style={{ maxWidth: '600px', margin: '40px auto', fontFamily: 'sans-serif' }}>
-      <h1>Task Manager</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Task Manager</h1>
+        <button onClick={logout}>Logout</button>
+      </div>
 
-      {/* Add task input */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
         <input
           type="text"
           placeholder="Add a new task..."
           value={text}
           onChange={e => setText(e.target.value)}
-          style={{ flex: 1, padding: '10px', fontSize: '14px', borderRadius: '7px', border: 'solid', borderWidth: '1px' }}
+          style={{ flex: 1, padding: '8px', fontSize: '14px' }}
         />
-        <button onClick={addTask} style={{ padding: '10px 16px', border: 'solid', borderRadius: '7px', borderWidth: '1px' }}>
+        <button onClick={addTask} style={{ padding: '8px 16px' }}>
           Add
         </button>
       </div>
 
-      {/* Task list */}
       {tasks.map(task => (
         <div key={task.id} style={{
           display: 'flex',
-          alignItems: 'start',
+          alignItems: 'center',
           gap: '8px',
           padding: '12px',
           marginBottom: '8px',
           border: '1px solid #ddd',
           borderRadius: '6px',
           textDecoration: task.done ? 'line-through' : 'none',
-          color: task.done ? 'lightblue' : 'white'
+          color: task.done ? '#999' : '#000'
         }}>
           <span style={{ flex: 1 }}>{task.text}</span>
           <button onClick={() => markDone(task.id)} disabled={task.done}>
@@ -83,6 +109,7 @@ function App() {
           </button>
         </div>
       ))}
+
       {tasks.length === 0 && <p style={{ color: '#999' }}>No tasks yet. Add one above!</p>}
     </div>
   )
