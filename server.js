@@ -6,11 +6,18 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const cors = require('cors')
 
+const morgan = require('morgan')
+const logger = require('./logger')
+
 const app = express();
 const prisma = new PrismaClient();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(morgan('combined', {
+  stream: { write: (message) => logger.info(message.trim()) }
+}))
 
 app.post('/register', async (req, res) => {
   const { email, password } = req.body
@@ -73,6 +80,12 @@ app.delete('/tasks/:id', authenticate, async (req, res) => {
   res.json({ message: 'Task deleted' })
 })
 
+// Catch-all error handler — must be the LAST app.use()
+app.use((err, req, res, next) => {
+  logger.error(err.stack)
+  res.status(500).json({ error: 'Something went wrong on the server' })
+})
+
 app.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
+  logger.info('Server running on http://localhost:3000')
+})
