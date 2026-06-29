@@ -56,11 +56,15 @@ app.get('/tasks', authenticate, async (req, res) => {
 })
 
 app.post('/tasks', authenticate, async (req, res) => {
-  const { text } = req.body
+  const { text, priority } = req.body
   if (!text) return res.status(400).json({ error: 'Text is required' })
 
   const task = await prisma.task.create({
-    data: { text, userId: req.userId }
+    data: {
+      text,
+      priority: priority || 'Medium',
+      userId: req.userId
+    }
   })
   res.status(201).json(task)
 })
@@ -78,6 +82,13 @@ app.delete('/tasks/:id', authenticate, async (req, res) => {
   const { id } = req.params
   await prisma.task.delete({ where: { id: Number(id) } })
   res.json({ message: 'Task deleted' })
+})
+
+app.get('/tasks/completed', authenticate, async (req, res) => {
+  const tasks = await prisma.task.findMany({
+    where: { userId: req.userId, done: true }
+  })
+  res.json(tasks)
 })
 
 // Catch-all error handler — must be the LAST app.use()
